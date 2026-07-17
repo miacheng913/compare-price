@@ -76,6 +76,51 @@ function unitPrice(record: PriceRecord) {
   return record.price / record.quantity;
 }
 
+function calculateExpression(input: string): number | null {
+  const expression = input.replace(/[×xX]/g, "*").replace(/÷/g, "/").replace(/\s/g, "");
+  if (!expression || !/^[0-9.+\-*/()]+$/.test(expression)) return null;
+  let position = 0;
+
+  function parseFactor(): number {
+    if (expression[position] === "+") { position += 1; return parseFactor(); }
+    if (expression[position] === "-") { position += 1; return -parseFactor(); }
+    if (expression[position] === "(") {
+      position += 1;
+      const value = parseSum();
+      if (expression[position] !== ")") return Number.NaN;
+      position += 1;
+      return value;
+    }
+    const start = position;
+    while (/[0-9.]/.test(expression[position] || "")) position += 1;
+    if (start === position) return Number.NaN;
+    return Number(expression.slice(start, position));
+  }
+
+  function parseProduct(): number {
+    let value = parseFactor();
+    while (expression[position] === "*" || expression[position] === "/") {
+      const operator = expression[position++];
+      const next = parseFactor();
+      value = operator === "*" ? value * next : value / next;
+    }
+    return value;
+  }
+
+  function parseSum(): number {
+    let value = parseProduct();
+    while (expression[position] === "+" || expression[position] === "-") {
+      const operator = expression[position++];
+      const next = parseProduct();
+      value = operator === "+" ? value + next : value - next;
+    }
+    return value;
+  }
+
+  const result = parseSum();
+  return position === expression.length && Number.isFinite(result) && result > 0 ? result : null;
+}
+
 export default function PriceHelper() {
   const [data, setData] = useState<AppData>(cloneInitialData);
   const [ready, setReady] = useState(false);
@@ -226,6 +271,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
 }
 
 function ProductForm({ data, editingId, onSave, onCancel }: { data: AppData; editingId: number | null; onSave: (product: Product) => void; onCancel: () => void }) {
+  const commonUnits = ["個", "包", "瓶", "盒", "公斤", "公升"];
   const existing = data.products.find((item) => item.id === editingId);
   const [name, setName] = useState(existing?.name || "");
   const [brand, setBrand] = useState(existing?.brand || "");
@@ -243,11 +289,14 @@ function ProductForm({ data, editingId, onSave, onCancel }: { data: AppData; edi
   return <>
     <Header title={existing ? "編輯商品" : "新增商品"} eyebrow="把常買的東西收進來" action={<button className="text-button" onClick={onCancel}>取消</button>} />
     <form className="form-card" onSubmit={submit}>
-      <FormField label="商品名稱" required><input value={name} onChange={(e) => setName(e.target.value)} placeholder="例：三層抽取式衛生紙" autoFocus /></FormField>
+      <FormField label="商品名稱" required><input value={name} onChange={(e) => setName(e.target.value)} placeholder="例：三層抽取式衛生紙" /></FormField>
       <FormField label="品牌" hint="選填"><input value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="例：舒潔" /></FormField>
       <FormField label="比價群組" hint="相同品項放一起，品牌差異一眼看懂"><input value={group} onChange={(e) => setGroup(e.target.value)} placeholder="例：衛生紙" /></FormField>
       <div className="two-columns">
-        <FormField label="計量單位"><input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="個、包、公斤" /></FormField>
+        <FormField label="計量單位" hint="可快速選擇，也可以自己填寫">
+          <div className="unit-quick">{commonUnits.map((item) => <button type="button" key={item} className={unit === item ? "active" : ""} onClick={() => setUnit(item)}>{item}</button>)}</div>
+          <input value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="自訂單位，例如：捲、組" />
+        </FormField>
         <FormField label="分類"><select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}><option value="">不分類</option>{data.categories.map((item) => <option value={item.id} key={item.id}>{item.name}</option>)}</select></FormField>
       </div>
       <button className="primary-button full" type="submit">{existing ? "儲存變更" : "新增商品"}</button>
@@ -264,12 +313,13 @@ function PriceForm({ data, presetProductId, onSave, onAddProduct }: { data: AppD
   const [date, setDate] = useState(today());
   const [notes, setNotes] = useState("");
   const product = data.products.find((item) => item.id === Number(productId));
-  const calculated = Number(price) > 0 && Number(quantity) > 0 ? Number(price) / Number(quantity) : null;
+  const parsedQuantity = calculateExpression(quantity);
+  const calculated = Number(price) > 0 && parsedQuantity ? Number(price) / parsedQuantity : null;
 
   function submit(event: FormEvent) {
     event.preventDefault();
-    if (!productId || !storeId || !Number(price) || !Number(quantity)) return;
-    onSave({ id: data.counters.prices + 1, productId: Number(productId), storeId: Number(storeId), price: Number(price), quantity: Number(quantity), date, notes: notes.trim(), createdAt: new Date().toISOString() });
+    if (!productId || !storeId || !Number(price) || !parsedQuantity) return;
+    onSave({ id: data.counters.prices + 1, productId: Number(productId), storeId: Number(storeId), price: Number(price), quantity: parsedQuantity, date, notes: notes.trim(), createdAt: new Date().toISOString() });
   }
 
   return <>
@@ -279,7 +329,11 @@ function PriceForm({ data, presetProductId, onSave, onAddProduct }: { data: AppD
       <FormField label="賣場" required><div className="store-picker">{data.stores.map((store) => <button type="button" key={store.id} className={Number(storeId) === store.id ? "store-pill active" : "store-pill"} onClick={() => setStoreId(store.id.toString())}><i style={{ background: store.color }} />{store.name}</button>)}</div></FormField>
       <div className="two-columns">
         <FormField label="售價" required><div className="money-input"><span>$</span><input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0" /></div></FormField>
-        <FormField label={`數量（${product?.unit || "單位"}）`} required><input inputMode="decimal" value={quantity} onChange={(e) => setQuantity(e.target.value)} /></FormField>
+        <FormField label={`數量（${product?.unit || "單位"}）`} hint="可輸入算式，例如 6×2 或 12÷3" required>
+          <input inputMode="text" value={quantity} onChange={(e) => setQuantity(e.target.value)} aria-invalid={quantity.length > 0 && !parsedQuantity} />
+          <div className="expression-tools">{["+", "−", "×", "÷"].map((operator) => <button type="button" key={operator} onClick={() => setQuantity((value) => `${value}${operator === "−" ? "-" : operator}`)}>{operator}</button>)}<button type="button" onClick={() => setQuantity((value) => value.slice(0, -1))}>⌫</button></div>
+          {parsedQuantity && /[+\-×xX*÷/]/.test(quantity) && <span className="expression-result">= {money.format(parsedQuantity)} {product?.unit || "單位"}</span>}
+        </FormField>
       </div>
       {calculated !== null && <div className="calculation"><span>換算單價</span><strong>${money.format(calculated)} <small>/ {product?.unit || "單位"}</small></strong></div>}
       <div className="two-columns">
@@ -329,7 +383,7 @@ function ManageView({ data, dark, setDark, updateData, notify }: { data: AppData
     <Header title="管理設定" eyebrow="把常用選項整理成你的樣子" action={<div className="brand-orb small">⚙</div>} />
     <section className="content-stack manage-stack">
       <article className="settings-card"><div><span className="tiny-label">外觀</span><h3>深色模式</h3><p>夜晚逛賣場也不刺眼</p></div><button className={dark ? "toggle on" : "toggle"} onClick={() => setDark(!dark)} aria-label="切換深色模式"><span /></button></article>
-      <article className="manage-card"><div className="section-title"><div><span className="tiny-label">購物地圖</span><h3>賣場</h3></div><strong>{data.stores.length} 家</strong></div><div className="token-list">{data.stores.map((store) => <div className="manage-token" key={store.id}><i style={{ background: store.color }} /><span>{store.name}</span><button onClick={() => { const name = prompt("編輯賣場名稱", store.name)?.trim(); if (name) updateData({ ...data, stores: data.stores.map((item) => item.id === store.id ? { ...item, name } : item) }); }}>編輯</button><button className="danger" onClick={() => confirm(`刪除「${store.name}」及相關價格？`) && updateData({ ...data, stores: data.stores.filter((item) => item.id !== store.id), prices: data.prices.filter((item) => item.storeId !== store.id) })}>刪除</button></div>)}</div><form className="inline-form" onSubmit={addStore}><input type="color" value={storeColor} onChange={(e) => setStoreColor(e.target.value)} aria-label="賣場顏色" /><input value={storeName} onChange={(e) => setStoreName(e.target.value)} placeholder="新增賣場名稱" /><button>＋ 新增</button></form></article>
+      <article className="manage-card"><div className="section-title"><div><span className="tiny-label">購物地圖</span><h3>賣場</h3></div><strong>{data.stores.length} 家</strong></div><div className="token-list">{data.stores.map((store) => <div className="manage-token" key={store.id}><input className="color-editor" type="color" value={store.color} aria-label={`編輯 ${store.name} 的顏色`} onChange={(event) => updateData({ ...data, stores: data.stores.map((item) => item.id === store.id ? { ...item, color: event.target.value } : item) })} /><span>{store.name}</span><button onClick={() => { const name = prompt("編輯賣場名稱", store.name)?.trim(); if (name) updateData({ ...data, stores: data.stores.map((item) => item.id === store.id ? { ...item, name } : item) }); }}>改名</button><button className="danger" onClick={() => confirm(`刪除「${store.name}」及相關價格？`) && updateData({ ...data, stores: data.stores.filter((item) => item.id !== store.id), prices: data.prices.filter((item) => item.storeId !== store.id) })}>刪除</button></div>)}</div><form className="inline-form" onSubmit={addStore}><input type="color" value={storeColor} onChange={(e) => setStoreColor(e.target.value)} aria-label="賣場顏色" /><input value={storeName} onChange={(e) => setStoreName(e.target.value)} placeholder="新增賣場名稱" /><button>＋ 新增</button></form></article>
       <article className="manage-card"><div className="section-title"><div><span className="tiny-label">快速篩選</span><h3>分類</h3></div><strong>{data.categories.length} 個</strong></div><div className="token-list">{data.categories.map((category) => <div className="manage-token" key={category.id}><span>{category.name}</span><button onClick={() => { const name = prompt("編輯分類名稱", category.name)?.trim(); if (name) updateData({ ...data, categories: data.categories.map((item) => item.id === category.id ? { ...item, name } : item) }); }}>編輯</button><button className="danger" onClick={() => confirm(`確定刪除「${category.name}」分類？`) && updateData({ ...data, categories: data.categories.filter((item) => item.id !== category.id), products: data.products.map((item) => item.categoryId === category.id ? { ...item, categoryId: null } : item) })}>刪除</button></div>)}</div><form className="inline-form" onSubmit={addCategory}><input value={categoryName} onChange={(e) => setCategoryName(e.target.value)} placeholder="新增分類名稱" /><button>＋ 新增</button></form></article>
       <Tip>資料只會儲存在目前這台裝置的瀏覽器中，不會上傳到任何伺服器。</Tip>
     </section>

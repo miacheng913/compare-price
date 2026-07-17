@@ -92,14 +92,22 @@ input, select { min-width: 0; }
 .secondary-button.compact { padding: 10px 13px; font-size: 13px; }
 .text-button { border: 0; background: transparent; color: var(--plum); font-weight: 800; padding: 10px; }
 .form-card { margin: 8px 16px 14px; padding: 20px 18px; display: grid; gap: 18px; overflow: visible; }
-.form-field { display: grid; gap: 8px; }
+.form-field { display: grid; gap: 8px; min-width: 0; }
 .form-field > span { font-size: 13px; font-weight: 800; }
 .form-field b { color: var(--coral); }
 .form-field small { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; font-weight: 500; }
-.form-field input, .form-field select, .inline-form input:not([type="color"]) { width: 100%; height: 49px; border: 1px solid var(--line); border-radius: 14px; padding: 0 13px; outline: 0; color: var(--ink); background: rgba(255,255,255,.56); transition: border-color .15s, box-shadow .15s; }
+.form-field input, .form-field select, .inline-form input:not([type="color"]) { width: 100%; max-width: 100%; min-width: 0; height: 49px; border: 1px solid var(--line); border-radius: 14px; padding: 0 13px; outline: 0; color: var(--ink); background: rgba(255,255,255,.56); transition: border-color .15s, box-shadow .15s; }
+.form-field input[type="date"] { display: block; inline-size: 100%; min-inline-size: 0; -webkit-appearance: none; appearance: none; }
 :root[data-theme="dark"] .form-field input, :root[data-theme="dark"] .form-field select, :root[data-theme="dark"] .inline-form input { background: rgba(18,14,20,.5); }
 .form-field input:focus, .form-field select:focus, .inline-form input:focus { border-color: var(--plum); box-shadow: 0 0 0 3px rgba(108,79,120,.12); }
-.two-columns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.two-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.unit-quick { display: flex; flex-wrap: wrap; gap: 6px; }
+.unit-quick button { border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; background: transparent; color: var(--muted); font-size: 11px; }
+.unit-quick button.active { border-color: var(--plum); background: rgba(108,79,120,.1); color: var(--plum-deep); font-weight: 800; }
+.expression-tools { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+.expression-tools button { min-height: 30px; border: 1px solid var(--line); border-radius: 9px; background: rgba(108,79,120,.07); color: var(--plum-deep); font-weight: 800; }
+.expression-result { color: var(--mint); font-size: 11px; font-weight: 800; }
+.form-field input[aria-invalid="true"] { border-color: var(--coral); }
 .store-picker { display: flex; flex-wrap: wrap; gap: 8px; }
 .store-pill { border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 13px; padding: 9px 12px; font-size: 13px; display: flex; align-items: center; gap: 7px; }
 .store-pill i, .store-price-row i, .history-row > i, .manage-token i { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
@@ -151,6 +159,7 @@ input, select { min-width: 0; }
 .manage-token:last-child { border: 0; }
 .manage-token span { flex: 1; font-size: 14px; font-weight: 700; }
 .manage-token button { border: 0; background: transparent; padding: 7px; color: var(--plum); font-size: 11px; font-weight: 700; }
+.color-editor { width: 32px; height: 32px; flex: 0 0 auto; padding: 2px; border: 1px solid var(--line); border-radius: 10px; background: transparent; }
 .inline-form { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; padding: 13px; border-top: 1px solid var(--line); }
 .inline-form input[type="color"] { width: 44px; height: 44px; border: 1px solid var(--line); padding: 3px; border-radius: 12px; background: transparent; }
 .inline-form input:not([type="color"]) { height: 44px; }
