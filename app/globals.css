@@ -104,9 +104,9 @@ input, select { min-width: 0; }
 .form-field b { color: var(--coral); }
 .form-field small { display: block; margin-top: 3px; color: var(--muted); font-size: 10px; font-weight: 500; }
 .form-field input, .form-field select, .inline-form input:not([type="color"]) { width: 100%; max-width: 100%; min-width: 0; height: 49px; border: 1px solid var(--line); border-radius: 14px; padding: 0 13px; outline: 0; color: var(--ink); background: rgba(255,255,255,.56); transition: border-color .15s, box-shadow .15s; }
-.form-field input[type="date"] { display: block; inline-size: 100%; min-inline-size: 0; padding-block: 12px; line-height: 23px; }
-.form-field input[type="date"]::-webkit-date-and-time-value { min-height: 23px; margin: 0; text-align: left; }
-.form-field input[type="date"]::-webkit-datetime-edit { display: flex; align-items: center; height: 23px; padding: 0; }
+.form-field input[type="date"] { display: block; inline-size: 100%; min-inline-size: 0; height: 49px !important; min-height: 49px; max-height: 49px; padding: 0 13px !important; line-height: 47px; -webkit-appearance: none; appearance: none; }
+.form-field input[type="date"]::-webkit-date-and-time-value { height: 47px; min-height: 47px; margin: 0; padding: 0; line-height: 47px; text-align: left; }
+.form-field input[type="date"]::-webkit-datetime-edit { padding: 0; line-height: 47px; }
 :root[data-theme="dark"] .form-field input, :root[data-theme="dark"] .form-field select, :root[data-theme="dark"] .inline-form input { background: rgba(18,14,20,.5); }
 .form-field input:focus, .form-field select:focus, .inline-form input:focus { border-color: var(--plum); box-shadow: 0 0 0 3px rgba(108,79,120,.12); }
 .two-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
