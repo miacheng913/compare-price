@@ -256,7 +256,7 @@ function HomeView({ data, onOpen, onAdd }: { data: AppData; onOpen: (id: number)
           const store = record ? data.stores.find((item) => item.id === record.storeId) : null;
           return <button className="product-row" key={product.id} onClick={() => onOpen(product.id)}>
             <div className="rank" data-first={index === 0 && !!record}>{index + 1}</div>
-            <div className="product-copy"><strong>{product.name}</strong><span>{product.brand || "未填品牌"}{store ? ` · ${store.name}` : " · 尚無價格"}</span></div>
+            <div className="product-copy"><strong>{product.name}</strong><span>{product.brand || "未填品牌"}</span>{record && store ? <span className="deal-meta"><i style={{ background: store.color }} />{store.name} · 整筆 ${money.format(record.price)} / {money.format(record.quantity)} {product.unit}</span> : <span>尚無價格</span>}</div>
             {record ? <div className="price-copy"><strong>${money.format(unitPrice(record))}</strong><span>/ {product.unit}</span></div> : <span className="no-price">記價格</span>}
             <span className="chevron">›</span>
           </button>;

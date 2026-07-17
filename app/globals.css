@@ -74,6 +74,8 @@ input, select { min-width: 0; }
 .product-copy { display: grid; gap: 3px; flex: 1; min-width: 0; }
 .product-copy strong { font-size: 15px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .product-copy span, .price-copy span, .history-copy span, .history-price span, .store-price-row span { color: var(--muted); font-size: 11px; }
+.product-copy .deal-meta { display: flex; align-items: center; gap: 5px; color: var(--plum); font-weight: 700; white-space: normal; }
+.deal-meta i { width: 7px; height: 7px; flex: 0 0 auto; border-radius: 50%; }
 .price-copy { display: grid; text-align: right; white-space: nowrap; }
 .price-copy strong { color: var(--plum-deep); font: 700 18px Georgia, serif; }
 .price-copy strong.best { color: var(--mint); }
