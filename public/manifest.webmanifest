@@ -1,0 +1,10 @@
+{
+  "name": "比價小幫手",
+  "short_name": "比價小幫手",
+  "description": "記錄各賣場價格並換算單價",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#fbf8f4",
+  "theme_color": "#6c4f78",
+  "lang": "zh-TW"
+}
