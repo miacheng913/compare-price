@@ -109,6 +109,7 @@ input, select { min-width: 0; }
 .expression-tools { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
 .expression-tools button { min-height: 30px; border: 1px solid var(--line); border-radius: 9px; background: rgba(108,79,120,.07); color: var(--plum-deep); font-weight: 800; }
 .expression-result { color: var(--mint); font-size: 11px; font-weight: 800; }
+.auto-fill-hint { color: var(--mint); font-size: 11px; font-weight: 800; }
 .form-field input[aria-invalid="true"] { border-color: var(--coral); }
 .store-picker { display: flex; flex-wrap: wrap; gap: 8px; }
 .store-pill { border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 13px; padding: 9px 12px; font-size: 13px; display: flex; align-items: center; gap: 7px; }

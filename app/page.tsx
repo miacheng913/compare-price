@@ -278,6 +278,23 @@ function ProductForm({ data, editingId, onSave, onCancel }: { data: AppData; edi
   const [group, setGroup] = useState(existing?.group || "");
   const [unit, setUnit] = useState(existing?.unit || "個");
   const [categoryId, setCategoryId] = useState(existing?.categoryId?.toString() || "");
+  const [groupCategoryHint, setGroupCategoryHint] = useState("");
+  const groupSuggestions = [...new Set(data.products.map((item) => item.group.trim()).filter(Boolean))];
+
+  function handleGroupChange(value: string) {
+    setGroup(value);
+    if (existing) return;
+    const normalized = value.trim().toLocaleLowerCase("zh-TW");
+    const matchedProducts = data.products.filter((item) => item.group.trim().toLocaleLowerCase("zh-TW") === normalized);
+    if (!normalized || matchedProducts.length === 0) {
+      setGroupCategoryHint("");
+      return;
+    }
+    const matchedCategoryId = matchedProducts.find((item) => item.categoryId !== null)?.categoryId ?? null;
+    setCategoryId(matchedCategoryId?.toString() || "");
+    const matchedCategory = data.categories.find((item) => item.id === matchedCategoryId);
+    setGroupCategoryHint(matchedCategory ? `已自動套用「${matchedCategory.name}」分類` : "此群組目前未分類");
+  }
 
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -291,7 +308,7 @@ function ProductForm({ data, editingId, onSave, onCancel }: { data: AppData; edi
     <form className="form-card" onSubmit={submit}>
       <FormField label="商品名稱" required><input value={name} onChange={(e) => setName(e.target.value)} placeholder="例：三層抽取式衛生紙" /></FormField>
       <FormField label="品牌" hint="選填"><input value={brand} onChange={(e) => setBrand(e.target.value)} placeholder="例：舒潔" /></FormField>
-      <FormField label="比價群組" hint="相同品項放一起，品牌差異一眼看懂"><input value={group} onChange={(e) => setGroup(e.target.value)} placeholder="例：衛生紙" /></FormField>
+      <FormField label="比價群組" hint="相同品項放一起，品牌差異一眼看懂"><input list="existing-groups" value={group} onChange={(e) => handleGroupChange(e.target.value)} placeholder="例：衛生紙" /><datalist id="existing-groups">{groupSuggestions.map((item) => <option value={item} key={item} />)}</datalist>{groupCategoryHint && <span className="auto-fill-hint">✓ {groupCategoryHint}</span>}</FormField>
       <div className="two-columns">
         <FormField label="計量單位" hint="可快速選擇，也可以自己填寫">
           <div className="unit-quick">{commonUnits.map((item) => <button type="button" key={item} className={unit === item ? "active" : ""} onClick={() => setUnit(item)}>{item}</button>)}</div>
