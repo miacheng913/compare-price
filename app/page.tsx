@@ -258,7 +258,7 @@ function HomeView({ data, onOpen, onAdd }: { data: AppData; onOpen: (id: number)
       const key = product.group.trim() || "其他商品";
       map.set(key, [...(map.get(key) || []), product]);
     });
-    return [...map.entries()].map(([name, items]) => ({ name, items: items.sort((a, b) => {
+    return [...map.entries()].map(([name, items]) => ({ name, isComparisonGroup: items.some((item) => Boolean(item.group.trim())), items: items.sort((a, b) => {
       const ap = latestPrices(data.prices.filter((record) => record.productId === a.id))[0];
       const bp = latestPrices(data.prices.filter((record) => record.productId === b.id))[0];
       return (ap ? unitPrice(ap) : Infinity) - (bp ? unitPrice(bp) : Infinity);
@@ -279,21 +279,31 @@ function HomeView({ data, onOpen, onAdd }: { data: AppData; onOpen: (id: number)
       </div>
     </section>
     <section className="content-stack">
-      {grouped.length === 0 ? <EmptyState onAdd={onAdd} /> : grouped.map((group) => <article className="compare-card" key={group.name}>
-        <div className="compare-heading"><div><span className="tiny-label">比價群組</span><h3>{group.name}</h3></div><span>{group.items.length} 個品牌</span></div>
-        <div className="product-list">{group.items.map((product, index) => {
-          const record = latestPrices(data.prices.filter((item) => item.productId === product.id))[0];
-          const store = record ? data.stores.find((item) => item.id === record.storeId) : null;
-          return <button className="product-row" key={product.id} onClick={() => onOpen(product.id)}>
-            <div className="rank" data-first={index === 0 && !!record}>{index + 1}</div>
-            <div className="product-copy"><strong>{product.name}</strong><span>{product.brand || "未填品牌"}</span>{record && store ? <span className="deal-meta"><i style={{ background: store.color }} />{store.name} · 整筆 ${money.format(record.price)} / {money.format(record.quantity)} {product.unit}</span> : <span>尚無價格</span>}</div>
-            {record ? <div className="price-copy"><strong>${money.format(unitPrice(record))}</strong><span>/ {product.unit}</span></div> : <span className="no-price">記價格</span>}
-            <span className="chevron">›</span>
-          </button>;
-        })}</div>
-      </article>)}
+      {grouped.length === 0 ? <EmptyState onAdd={onAdd} /> : grouped.map((group) => <HomeGroupCard group={group} data={data} onOpen={onOpen} key={group.name} />)}
     </section>
   </>;
+}
+
+function HomeGroupCard({ group, data, onOpen }: { group: { name: string; items: Product[]; isComparisonGroup: boolean }; data: AppData; onOpen: (id: number) => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const collapsible = group.isComparisonGroup && group.items.length > 1;
+  const visibleItems = collapsible && !expanded ? group.items.slice(0, 1) : group.items;
+  const headingContent = <><div><span className="tiny-label">比價群組</span><h3>{group.name}</h3></div>{collapsible ? <span className="toggle-summary"><em>{expanded ? `${group.items.length} 個品牌` : `最低價 · 共 ${group.items.length} 個`}</em><b>{expanded ? "−" : "＋"}</b></span> : <span>{group.items.length} 個品牌</span>}</>;
+
+  return <article className="compare-card">
+    {collapsible ? <button className="compare-heading compare-toggle" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded}>{headingContent}</button> : <div className="compare-heading">{headingContent}</div>}
+    <div className="product-list">{visibleItems.map((product, index) => {
+      const record = latestPrices(data.prices.filter((item) => item.productId === product.id))[0];
+      const store = record ? data.stores.find((item) => item.id === record.storeId) : null;
+      return <button className="product-row" key={product.id} onClick={() => onOpen(product.id)}>
+        <div className="rank" data-first={index === 0 && !!record}>{index + 1}</div>
+        <div className="product-copy"><strong>{product.name}</strong><span>{product.brand || "未填品牌"}</span>{record && store ? <span className="deal-meta"><i style={{ background: store.color }} />{store.name} · 整筆 ${money.format(record.price)} / {money.format(record.quantity)} {product.unit}</span> : <span>尚無價格</span>}</div>
+        {record ? <div className="price-copy"><strong>${money.format(unitPrice(record))}</strong><span>/ {product.unit}</span></div> : <span className="no-price">記價格</span>}
+        <span className="chevron">›</span>
+      </button>;
+    })}</div>
+    {collapsible && <button className="expand-footer" onClick={() => setExpanded((value) => !value)}>{expanded ? "收合，只顯示最便宜" : `展開其他 ${group.items.length - 1} 個品牌`}<span>{expanded ? "⌃" : "⌄"}</span></button>}
+  </article>;
 }
 
 function EmptyState({ onAdd }: { onAdd: () => void }) {
