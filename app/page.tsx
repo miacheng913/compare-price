@@ -27,6 +27,7 @@ type AppData = {
   counters: { categories: number; stores: number; products: number; prices: number };
   categories: Category[];
   stores: Store[];
+  units: string[];
   products: Product[];
   prices: PriceRecord[];
 };
@@ -53,6 +54,7 @@ const initialData: AppData = {
     { id: 4, name: "Costco", color: "#e3a62f" },
     { id: 5, name: "頂好", color: "#8b67bf" },
   ],
+  units: ["個", "包", "瓶", "盒", "公斤", "公升"],
   products: [],
   prices: [],
 };
@@ -78,6 +80,14 @@ function unitPrice(record: PriceRecord) {
 
 function moveItem<T extends { id: number }>(items: T[], id: number, offset: -1 | 1): T[] {
   const currentIndex = items.findIndex((item) => item.id === id);
+  const targetIndex = currentIndex + offset;
+  if (currentIndex < 0 || targetIndex < 0 || targetIndex >= items.length) return items;
+  const next = [...items];
+  [next[currentIndex], next[targetIndex]] = [next[targetIndex], next[currentIndex]];
+  return next;
+}
+
+function moveAtIndex<T>(items: T[], currentIndex: number, offset: -1 | 1): T[] {
   const targetIndex = currentIndex + offset;
   if (currentIndex < 0 || targetIndex < 0 || targetIndex >= items.length) return items;
   const next = [...items];
@@ -142,7 +152,10 @@ export default function PriceHelper() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) setData(JSON.parse(saved));
+      if (saved) {
+        const parsed = JSON.parse(saved) as Partial<AppData>;
+        setData({ ...cloneInitialData(), ...parsed, counters: { ...initialData.counters, ...parsed.counters }, units: Array.isArray(parsed.units) ? parsed.units : initialData.units });
+      }
     } catch {
       setData(cloneInitialData());
     }
@@ -156,6 +169,14 @@ export default function PriceHelper() {
     document.documentElement.dataset.theme = dark ? "dark" : "light";
     if (ready) localStorage.setItem("price-helper-theme", dark ? "dark" : "light");
   }, [dark, ready]);
+
+  useEffect(() => {
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    });
+  }, [view, selectedProductId, editingProductId]);
 
   function updateData(next: AppData) {
     setData(next);
@@ -280,7 +301,7 @@ function EmptyState({ onAdd }: { onAdd: () => void }) {
 }
 
 function ProductForm({ data, editingId, onSave, onCancel }: { data: AppData; editingId: number | null; onSave: (product: Product) => void; onCancel: () => void }) {
-  const commonUnits = ["個", "包", "瓶", "盒", "公斤", "公升"];
+  const commonUnits = data.units;
   const existing = data.products.find((item) => item.id === editingId);
   const [name, setName] = useState(existing?.name || "");
   const [brand, setBrand] = useState(existing?.brand || "");
@@ -396,6 +417,7 @@ function ManageView({ data, dark, setDark, updateData, notify }: { data: AppData
   const [storeName, setStoreName] = useState("");
   const [storeColor, setStoreColor] = useState("#8b67bf");
   const [categoryName, setCategoryName] = useState("");
+  const [unitName, setUnitName] = useState("");
 
   function addStore(event: FormEvent) {
     event.preventDefault(); const name = storeName.trim(); if (!name || data.stores.some((item) => item.name === name)) return;
@@ -405,12 +427,17 @@ function ManageView({ data, dark, setDark, updateData, notify }: { data: AppData
     event.preventDefault(); const name = categoryName.trim(); if (!name || data.categories.some((item) => item.name === name)) return;
     const id = data.counters.categories + 1; updateData({ ...data, categories: [...data.categories, { id, name }], counters: { ...data.counters, categories: id } }); setCategoryName(""); notify("分類已新增");
   }
+  function addUnit(event: FormEvent) {
+    event.preventDefault(); const name = unitName.trim(); if (!name || data.units.some((item) => item === name)) return;
+    updateData({ ...data, units: [...data.units, name] }); setUnitName(""); notify("快捷單位已新增");
+  }
   return <>
     <Header title="管理設定" eyebrow="把常用選項整理成你的樣子" action={<div className="brand-orb small">⚙</div>} />
     <section className="content-stack manage-stack">
       <article className="settings-card"><div><span className="tiny-label">外觀</span><h3>深色模式</h3><p>夜晚逛賣場也不刺眼</p></div><button className={dark ? "toggle on" : "toggle"} onClick={() => setDark(!dark)} aria-label="切換深色模式"><span /></button></article>
       <article className="manage-card"><div className="section-title"><div><span className="tiny-label">購物地圖</span><h3>賣場</h3></div><strong>{data.stores.length} 家</strong></div><div className="token-list">{data.stores.map((store, index) => <div className="manage-token" key={store.id}><input className="color-editor" type="color" value={store.color} aria-label={`編輯 ${store.name} 的顏色`} onChange={(event) => updateData({ ...data, stores: data.stores.map((item) => item.id === store.id ? { ...item, color: event.target.value } : item) })} /><span>{store.name}</span><div className="order-controls"><button disabled={index === 0} onClick={() => updateData({ ...data, stores: moveItem(data.stores, store.id, -1) })} aria-label={`將 ${store.name} 上移`}>↑</button><button disabled={index === data.stores.length - 1} onClick={() => updateData({ ...data, stores: moveItem(data.stores, store.id, 1) })} aria-label={`將 ${store.name} 下移`}>↓</button></div><button onClick={() => { const name = prompt("編輯賣場名稱", store.name)?.trim(); if (name) updateData({ ...data, stores: data.stores.map((item) => item.id === store.id ? { ...item, name } : item) }); }}>改名</button><button className="danger" onClick={() => confirm(`刪除「${store.name}」及相關價格？`) && updateData({ ...data, stores: data.stores.filter((item) => item.id !== store.id), prices: data.prices.filter((item) => item.storeId !== store.id) })}>刪除</button></div>)}</div><form className="inline-form" onSubmit={addStore}><input type="color" value={storeColor} onChange={(e) => setStoreColor(e.target.value)} aria-label="賣場顏色" /><input value={storeName} onChange={(e) => setStoreName(e.target.value)} placeholder="新增賣場名稱" /><button>＋ 新增</button></form></article>
       <article className="manage-card"><div className="section-title"><div><span className="tiny-label">快速篩選</span><h3>分類</h3></div><strong>{data.categories.length} 個</strong></div><div className="token-list">{data.categories.map((category, index) => <div className="manage-token" key={category.id}><span>{category.name}</span><div className="order-controls"><button disabled={index === 0} onClick={() => updateData({ ...data, categories: moveItem(data.categories, category.id, -1) })} aria-label={`將 ${category.name} 上移`}>↑</button><button disabled={index === data.categories.length - 1} onClick={() => updateData({ ...data, categories: moveItem(data.categories, category.id, 1) })} aria-label={`將 ${category.name} 下移`}>↓</button></div><button onClick={() => { const name = prompt("編輯分類名稱", category.name)?.trim(); if (name) updateData({ ...data, categories: data.categories.map((item) => item.id === category.id ? { ...item, name } : item) }); }}>改名</button><button className="danger" onClick={() => confirm(`確定刪除「${category.name}」分類？`) && updateData({ ...data, categories: data.categories.filter((item) => item.id !== category.id), products: data.products.map((item) => item.categoryId === category.id ? { ...item, categoryId: null } : item) })}>刪除</button></div>)}</div><form className="inline-form" onSubmit={addCategory}><input value={categoryName} onChange={(e) => setCategoryName(e.target.value)} placeholder="新增分類名稱" /><button>＋ 新增</button></form></article>
+      <article className="manage-card"><div className="section-title"><div><span className="tiny-label">商品規格</span><h3>計量單位快捷</h3></div><strong>{data.units.length} 個</strong></div><div className="token-list">{data.units.map((unit, index) => <div className="manage-token" key={`${unit}-${index}`}><span>{unit}</span><div className="order-controls"><button disabled={index === 0} onClick={() => updateData({ ...data, units: moveAtIndex(data.units, index, -1) })} aria-label={`將 ${unit} 上移`}>↑</button><button disabled={index === data.units.length - 1} onClick={() => updateData({ ...data, units: moveAtIndex(data.units, index, 1) })} aria-label={`將 ${unit} 下移`}>↓</button></div><button onClick={() => { const name = prompt("編輯快捷單位", unit)?.trim(); if (name && !data.units.some((item, itemIndex) => item === name && itemIndex !== index)) updateData({ ...data, units: data.units.map((item, itemIndex) => itemIndex === index ? name : item) }); }}>改名</button><button className="danger" onClick={() => confirm(`確定移除「${unit}」快捷單位？現有商品不受影響。`) && updateData({ ...data, units: data.units.filter((_, itemIndex) => itemIndex !== index) })}>刪除</button></div>)}</div><form className="inline-form" onSubmit={addUnit}><input value={unitName} onChange={(e) => setUnitName(e.target.value)} placeholder="新增快捷單位" /><button>＋ 新增</button></form></article>
       <Tip>資料只會儲存在目前這台裝置的瀏覽器中，不會上傳到任何伺服器。</Tip>
     </section>
   </>;
